@@ -51,5 +51,5 @@ func Check(proxy string) (bool, error) {
 		return false, nil
 	}
 
-	return false, nil
+	return true, nil
 }

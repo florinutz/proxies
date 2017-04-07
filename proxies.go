@@ -2,15 +2,12 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
-	"errors"
 	"log"
-	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync"
-	"time"
+
+	"github.com/florinutz/proxies/validator"
 )
 
 const (
@@ -40,11 +37,15 @@ func main() {
 		wg.Add(1)
 		go func(proxy string) {
 			defer wg.Done()
-			err := checkProxy(proxy)
+			ok, err := validator.Check(proxy)
 			if err != nil {
 				return
 			}
-			log.Printf("proxy %s works", proxy)
+			if ok {
+				log.Printf("proxy %s works", proxy)
+			} else {
+				log.Printf("proxy %s doesn't work", proxy)
+			}
 		}(proxy)
 
 	}
@@ -53,47 +54,4 @@ func main() {
 	}
 
 	wg.Wait()
-}
-
-func checkProxy(proxy string) error {
-	proxyURL, err := url.Parse(proxy)
-	if err != nil {
-		return err
-	}
-
-	tp := &http.Transport{
-		Proxy: http.ProxyURL(proxyURL),
-		DialContext: (&net.Dialer{
-			Timeout:   5 * time.Second,
-			DualStack: true,
-		}).DialContext,
-		DisableKeepAlives:     true,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-	}
-
-	client := &http.Client{
-		Transport: tp,
-	}
-
-	res, err := client.Get(myIPURL)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-
-	var jr struct {
-		IP string `json:"ip"`
-	}
-
-	err = json.NewDecoder(res.Body).Decode(&jr)
-	if err != nil {
-		return err
-	}
-
-	if len(jr.IP) == 0 {
-		return errors.New("proxy doesn't work")
-	}
-
-	return nil
 }
