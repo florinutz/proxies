@@ -12,7 +12,6 @@ import (
 
 const (
 	proxyListURL = "http://txt.proxyspy.net/proxy.txt"
-	myIPURL      = "https://api.ipify.org?format=json"
 )
 
 func main() {
