@@ -1,55 +1,46 @@
 package validator
 
 import (
-	"encoding/json"
+	"crypto/tls"
 	"net"
 	"net/http"
 	"net/url"
 	"time"
 )
 
-const (
-	myIPURL = "https://api.ipify.org?format=json"
-)
+var Transport = &http.Transport{
+	DialContext: (&net.Dialer{
+		Timeout:   5 * time.Second,
+		DualStack: true,
+	}).DialContext,
+	DisableKeepAlives:     true,
+	TLSHandshakeTimeout:   10 * time.Second,
+	ExpectContinueTimeout: 1 * time.Second,
+	TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
+}
 
-// Check verifies a proxy
-func Check(proxy string) (bool, error) {
+var Client = &http.Client{
+	Transport: Transport,
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		// As a special case, if CheckRedirect returns ErrUseLastResponse,
+		// then the most recent response is returned with its body unclosed,
+		// along with a nil error.
+		return http.ErrUseLastResponse
+	},
+}
+
+// Performs a GET request to a targetUrl through the proxy and returns the response
+func Check(proxy string, targetUrl string) (*http.Response, error) {
 	proxyURL, err := url.Parse(proxy)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
+	Transport.Proxy = http.ProxyURL(proxyURL)
 
-	tp := &http.Transport{
-		Proxy: http.ProxyURL(proxyURL),
-		DialContext: (&net.Dialer{
-			Timeout:   5 * time.Second,
-			DualStack: true,
-		}).DialContext,
-		DisableKeepAlives:     true,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-	}
-
-	client := &http.Client{Transport: tp}
-
-	res, err := client.Get(myIPURL)
+	res, err := Client.Get(targetUrl)
 	if err != nil {
-		return false, err
-	}
-	defer res.Body.Close()
-
-	var jr struct {
-		IP string `json:"ip"`
+		return nil, err
 	}
 
-	err = json.NewDecoder(res.Body).Decode(&jr)
-	if err != nil {
-		return false, err
-	}
-
-	if len(jr.IP) == 0 {
-		return false, nil
-	}
-
-	return true, nil
+	return res, nil
 }
