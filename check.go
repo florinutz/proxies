@@ -1,4 +1,4 @@
-package validator
+package proxies
 
 import (
 	"crypto/tls"
