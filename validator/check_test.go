@@ -18,16 +18,17 @@ func (h SimpleStringHanlder) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestCheck(t *testing.T) {
-	var httpServer = httptest.NewServer(SimpleStringHanlder(Body))
-	check(httpServer, t)
-
-	var httpsServer = httptest.NewTLSServer(SimpleStringHanlder(Body))
-	check(httpsServer, t)
-}
-
-func check(httpServer *httptest.Server, t *testing.T) {
 	proxyServer := httptest.NewServer(goproxy.NewProxyHttpServer())
 	defer proxyServer.Close()
+
+	var httpServer = httptest.NewServer(SimpleStringHanlder(Body))
+	check(httpServer, proxyServer, t)
+
+	var httpsServer = httptest.NewTLSServer(SimpleStringHanlder(Body))
+	check(httpsServer, proxyServer, t)
+}
+
+func check(httpServer *httptest.Server, proxyServer *httptest.Server, t *testing.T) {
 	resp, err := Check(proxyServer.URL, httpServer.URL)
 	if err != nil {
 		t.Fatal(err)
