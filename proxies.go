@@ -12,7 +12,7 @@ type Proxy struct {
 	Port         int
 	Country      string
 	Anonymity    string
-	WithTLS      bool
+	TLS          string
 	GooglePassed bool
 }
 

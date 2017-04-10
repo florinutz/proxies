@@ -4,47 +4,65 @@ import (
 	"bufio"
 	"io"
 	"net"
+	"regexp"
 	"strconv"
-	"strings"
 )
 
 type List struct {
-	Parser  ListParser
-	Proxies []Proxy
+	Proxies []*Proxy
 }
 
-type ListParser struct {
-	reader io.Reader
-}
-
-func NewListParser(r io.Reader) *ListParser {
-	return &ListParser{r}
-}
-
-func (parser *ListParser) GetProxies() (proxies []Proxy) {
-	proxies = []Proxy{}
-	scanner := bufio.NewScanner(parser.reader)
+func (l *List) Read(reader io.Reader) (proxies []*Proxy) {
+	proxies = []*Proxy{}
+	scanner := bufio.NewScanner(reader)
+	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
-		line := scanner.Text()
-		if len(line) == 0 || '0' > line[0] || line[0] > '9' {
+		txt := scanner.Text()
+		if len(txt) == 0 || '0' > txt[0] || txt[0] > '9' {
 			continue
 		}
-		address := strings.Fields(line)[0]
-		addressSplit := strings.Split(address, ":")
-
-		port, err := strconv.Atoi(addressSplit[1])
-		if err != nil {
-			// or a default value?
-			continue
+		if proxy := l.ReadSingleProxy(txt); proxy != nil {
+			proxies = append(proxies, proxy)
 		}
+	}
+	return
+}
 
-		proxy := Proxy{
-			IP: net.IPAddr{
-				IP: []byte(addressSplit[0]),
-			},
-			Port: port,
+// Returns *Proxy with populated values or nil on failure
+func (l *List) ReadSingleProxy(s string) *Proxy {
+	var lineSplitterRegex = `(?P<hostport>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{1,5})\s(?P<country>\w{1,3})-(?P<anonimity>[NAH]!?)(?:-(?P<tls>S!?))?\s(?P<google>[+-])`
+	values := getLineNamedValues(regexp.MustCompile(lineSplitterRegex), s)
+
+	ip, portStr, err := net.SplitHostPort(values["hostport"])
+	if err != nil {
+		return nil
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return nil
+	}
+	google := false
+	if values["google"] == "+" {
+		google = true
+	}
+
+	return &Proxy{
+		IP:           net.IPAddr{IP: net.ParseIP(ip)},
+		Port:         port,
+		Country:      values["country"],
+		Anonymity:    values["anonimity"],
+		TLS:          values["tls"],
+		GooglePassed: google,
+	}
+}
+
+func getLineNamedValues(re *regexp.Regexp, line string) (values map[string]string) {
+	values = map[string]string{}
+	if match := re.FindStringSubmatch(line); match != nil {
+		n1 := re.SubexpNames()
+		for i, n := range match {
+			values[n1[i]] = n
 		}
-		proxies = append(proxies, proxy)
 	}
 	return
 }
