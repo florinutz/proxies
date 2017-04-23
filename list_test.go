@@ -15,10 +15,11 @@ func TestReadFile(t *testing.T) {
 	}
 	defer f.Close()
 
-	proxiesRead := list.Read(bufio.NewReader(f))
+	r := bufio.NewReader(f)
+	list.Read(r)
 
 	// there are 300 possibly valid proxiesRead in list_sample.txt
-	if len(proxiesRead) != 300 {
+	if len(list) != 300 {
 		t.Fatal("Not 300 proxiesRead")
 	}
 }

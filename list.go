@@ -8,12 +8,9 @@ import (
 	"strconv"
 )
 
-type List struct {
-	Proxies []*Proxy
-}
+type List []Proxy
 
-func (l *List) Read(reader io.Reader) (proxies []*Proxy) {
-	proxies = []*Proxy{}
+func (l *List) Read(reader io.Reader) {
 	scanner := bufio.NewScanner(reader)
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
@@ -22,10 +19,14 @@ func (l *List) Read(reader io.Reader) (proxies []*Proxy) {
 			continue
 		}
 		if proxy := l.ReadSingleProxy(txt); proxy != nil {
-			proxies = append(proxies, proxy)
+			*l = append(*l, *proxy)
 		}
 	}
 	return
+}
+
+func (l *List) AddProxy(p Proxy) {
+	*l = append(*l, p)
 }
 
 // Returns *Proxy with populated values or nil on failure

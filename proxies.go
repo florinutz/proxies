@@ -1,6 +1,11 @@
 package proxies
 
-import "net"
+import (
+	"fmt"
+	"net"
+)
+
+//https://github.com/Kladdkaka/ProxyGrabber/blob/master/proxy_grabber.py
 
 const (
 	proxyListURL = "http://txt.proxyspy.net/proxy.txt"
@@ -14,6 +19,10 @@ type Proxy struct {
 	Anonymity    string
 	TLS          string
 	GooglePassed bool
+}
+
+func (p *Proxy) String() string {
+	return fmt.Sprintf("%s:%d", p.IP, p.Port)
 }
 
 //
