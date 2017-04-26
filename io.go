@@ -12,13 +12,13 @@ type Reader interface {
 type HttpClient struct {
 	*http.Client
 	List   *List
-	Reader Reader
+	Reader *Reader
 }
 
 func (c *HttpClient) Do(req *http.Request) (*http.Response, error) {
 	res, err := c.Client.Do(req)
 	if err == nil {
-		c.Reader.Read(res.Body, c.List)
+		(*c.Reader).Read(res.Body, c.List)
 	}
 	return res, err
 }
