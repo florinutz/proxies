@@ -2,11 +2,15 @@ package proxies
 
 import (
 	"bufio"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 )
 
 func TestReadFile(t *testing.T) {
+	t.Parallel()
+
 	list := List{}
 
 	f, err := os.Open("test_data/list_sample.txt")
@@ -16,7 +20,9 @@ func TestReadFile(t *testing.T) {
 	defer f.Close()
 
 	r := bufio.NewReader(f)
-	list.Read(r)
+	list.Read(r, &ScannerReader{
+		ProxyExtractor: ProxyExtractorFunc(readSingleProxy),
+	})
 
 	// there are 300 possibly valid proxiesRead in list_sample.txt
 	if len(list) != 300 {
@@ -25,8 +31,11 @@ func TestReadFile(t *testing.T) {
 }
 
 func TestReadLine(t *testing.T) {
-	l := List{}
-	if proxy := l.ReadSingleProxy("54.153.73.116:3128 US-N-S! -"); proxy != nil {
+	t.Parallel()
+
+	proxyExtractor := ProxyExtractorFunc(readSingleProxy)
+
+	if proxy := proxyExtractor("54.153.73.116:3128 US-N-S! -"); proxy != nil {
 		if proxy.IP.String() != "54.153.73.116" {
 			t.Error("Wrong ip")
 		}
@@ -48,4 +57,15 @@ func TestReadLine(t *testing.T) {
 	} else {
 		t.Error("Couldn't parse line")
 	}
+}
+
+func TestHttp(t *testing.T) {
+	//ts := startTestServer()
+}
+func startTestServer() *httptest.Server {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "test_data/list_sample.txt")
+	}))
+	defer ts.Close()
+	return ts
 }
